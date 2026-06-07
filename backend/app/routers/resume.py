@@ -1,4 +1,5 @@
 from fastapi import APIRouter, UploadFile, File
+from app.services.pdf_service import extract_text_from_pdf
 import os
 
 router = APIRouter(
@@ -15,28 +16,31 @@ def resume_health():
 
 
 @router.post("/upload")
-async def upload_resume(
-    file: UploadFile = File(...)
-):
+async def upload_resume(file: UploadFile = File(...)):
     upload_dir = "app/uploads"
+    os.makedirs(upload_dir, exist_ok=True)
 
-    os.makedirs(
-        upload_dir,
-        exist_ok=True
-    )
-
-    file_path = os.path.join(
-        upload_dir,
-        file.filename
-    )
+    file_path = os.path.join(upload_dir, file.filename)
 
     content = await file.read()
 
     with open(file_path, "wb") as f:
         f.write(content)
 
+    extracted_text = extract_text_from_pdf(file_path)
+
+    if not extracted_text.strip():
+        return {
+            "filename": file.filename,
+            "size": len(content),
+            "status": "uploaded",
+            "text_preview": "",
+            "warning": "No text could be extracted. This PDF may be scanned or image-based."
+        }
+
     return {
         "filename": file.filename,
         "size": len(content),
-        "status": "uploaded"
+        "status": "uploaded",
+        "text_preview": extracted_text[:500]
     }
