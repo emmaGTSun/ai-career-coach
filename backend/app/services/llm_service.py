@@ -1,4 +1,6 @@
+import json
 import os
+
 from dotenv import load_dotenv
 from openai import OpenAI
 
@@ -14,18 +16,22 @@ client = OpenAI(
 )
 
 
-def analyze_resume(resume_text: str) -> str:
+def analyze_resume(resume_text: str) -> dict:
     prompt = f"""
 You are an AI career coach for software engineering job seekers.
 
-Analyze the following resume text and return a concise career analysis.
+Analyze the resume text and return ONLY valid JSON.
+Do not include markdown.
+Do not include explanations outside JSON.
 
-Please include:
-1. Candidate summary
-2. Technical skills
-3. Strengths
-4. Missing skills
-5. Career improvement suggestions
+JSON format:
+{{
+  "candidate_summary": "...",
+  "technical_skills": ["..."],
+  "strengths": ["..."],
+  "missing_skills": ["..."],
+  "career_suggestions": ["..."]
+}}
 
 Resume text:
 {resume_text}
@@ -36,14 +42,22 @@ Resume text:
         messages=[
             {
                 "role": "system",
-                "content": "You are a professional AI career coach."
+                "content": "You are a professional AI career coach. Return only valid JSON."
             },
             {
                 "role": "user",
                 "content": prompt
             }
         ],
-        temperature=0.3
+        temperature=0.2
     )
 
-    return response.choices[0].message.content
+    content = response.choices[0].message.content
+
+    try:
+        return json.loads(content)
+    except json.JSONDecodeError:
+        return {
+            "raw_analysis": content,
+            "warning": "The LLM response was not valid JSON."
+        }
