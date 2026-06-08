@@ -1,6 +1,7 @@
 from fastapi import APIRouter, UploadFile, File
 from app.services.pdf_service import extract_text_from_pdf
 import os
+from app.services.llm_service import analyze_resume
 
 router = APIRouter(
     prefix="/resume",
@@ -37,10 +38,13 @@ async def upload_resume(file: UploadFile = File(...)):
             "text_preview": "",
             "warning": "No text could be extracted. This PDF may be scanned or image-based."
         }
+    
+    analysis = analyze_resume(extracted_text)
 
     return {
-        "filename": file.filename,
-        "size": len(content),
-        "status": "uploaded",
-        "text_preview": extracted_text[:500]
-    }
+    "filename": file.filename,
+    "size": len(content),
+    "status": "uploaded",
+    "text_preview": extracted_text[:500],
+    "analysis": analysis
+}
